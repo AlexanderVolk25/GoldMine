@@ -17,7 +17,7 @@ namespace Oxide.Plugins
 	class TPMenuSystem : RustPlugin
 	{
 		#region Вар
-			[PluginReference] Plugin TPInfoSystem, TPShop, UniqueCupboard, TPMiningFarm, TPBaraxolka, MBKits, IQEconomic,TPEconomic, ImageLibrary, TPRulesSystem, TPWipeBlock, TPKits, TPCaseSystem, TPStatsSystem, TPTeleportation, TPReportSystem, TPBPass, GameStoresRUST, TPLotterySystem, SkinDrop, TPChat, TPWipeSchedule, StripesEvent, TPRaid, TPSkillSystem, DailyRewards, TPRaidAlert, TPReward, TPClan, TPMenuInfo, TPPrm;
+			[PluginReference] Plugin TPInfoSystem, TPShop, UniqueCupboard, TPMiningFarm, TPBaraxolka, MBKits, IQEconomic,TPEconomic, ImageLibrary, TPRulesSystem, TPWipeBlock, TPKits, TPCaseSystem, TPStatsSystem, TPTeleportation, TPReportSystem, TPBPass, GameStoresRUST, TPLotterySystem, SkinDrop, TPChat, TPWipeSchedule, StripesEvent, TPRaid, TPSkillSystem, DailyRewards, TPRaidAlert, TPReward, TPClan, TPMenuInfo, TPPrm, TPNotifications;
 			public string Layer = "Menu_UI";
 			private static TPMenuSystem _;
 			
@@ -121,6 +121,11 @@ namespace Oxide.Plugins
 							new Settings {
 								DisplayName = "Корзина",
 								Command = "store",
+								Url = ""
+							},
+							new Settings {
+								DisplayName = "Оповещения",
+								Command = "notifications",
 								Url = ""
 							},
 						}
@@ -425,6 +430,10 @@ namespace Oxide.Plugins
 				{
 					TPMenuInfo?.Call("UI_DrawMain", player);
 				}
+				if (name == "notifications")
+				{
+					TPNotifications?.Call("OpenNotificationsUI", player);
+				}
 			}
 			void ButtonUI(BasePlayer player)
 			{
@@ -647,6 +656,7 @@ namespace Oxide.Plugins
 				CuiHelper.DestroyUi(player, "TPBPass_UI");
 				CuiHelper.DestroyUi(player, "MBKits_UI");
 				CuiHelper.DestroyUi(player, "MBKits_Inv_UI");
+				CuiHelper.DestroyUi(player, "TPNotifications_UI");
 			}
 			
 			string GetPlayerBalance(BasePlayer player)
