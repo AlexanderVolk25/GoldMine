@@ -106,6 +106,9 @@ namespace Oxide.Plugins
 				[JsonProperty("Group_ID")]
 				public string GroupID { get; set; } = "public141783468";
 
+				[JsonProperty("Chat_ID")]
+				public string ChatID { get; set; } = "1";
+
 				[JsonProperty("API_Version")]
 				public string APIVersion { get; set; } = "v=5.199";
 			}
@@ -347,7 +350,7 @@ namespace Oxide.Plugins
 
 			// Для отправки в группу используется wall.post или другой метод
 			// Здесь используем простой пример с messages.send для chat_id
-			string url = $"https://api.vk.com/method/messages.send?chat_id=1&message={URLEncode(message)}&{_config.VKSettings.APIVersion}&random_id={GetRandomId()}&access_token={_config.VKSettings.VKToken}";
+			string url = $"https://api.vk.com/method/messages.send?chat_id={_config.VKSettings.ChatID}&message={URLEncode(message)}&{_config.VKSettings.APIVersion}&random_id={GetRandomId()}&access_token={_config.VKSettings.VKToken}";
 			
 			webrequest.Enqueue(url, null, (code, response) =>
 			{
