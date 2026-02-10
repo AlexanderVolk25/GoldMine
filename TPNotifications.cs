@@ -21,6 +21,7 @@ namespace Oxide.Plugins
 		private Dictionary<ulong, PlayerData> _playerData = new Dictionary<ulong, PlayerData>();
 		private List<SentNotification> _sentNotifications = new List<SentNotification>();
 		private Dictionary<ulong, PendingVerification> _pendingVerifications = new Dictionary<ulong, PendingVerification>();
+		private Dictionary<ulong, string> _tempVkIds = new Dictionary<ulong, string>();
 		#endregion
 
 		#region Data Classes
@@ -625,8 +626,44 @@ namespace Oxide.Plugins
 				Text = { Text = "Привязка VK", Font = "robotocondensed-regular.ttf", FontSize = 14, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
 			}, Layer);
 
+			// Профиль VK если привязан
+			if (data.VkConfirmed && !string.IsNullOrEmpty(data.VkId))
+			{
+				container.Add(new CuiPanel
+				{
+					RectTransform = { AnchorMin = "0.02 0.78", AnchorMax = "0.98 0.84" },
+					Image = { Color = "0.15 0.6 0.3 0.3" }
+				}, Layer, $"{Layer}_vkprofile");
+
+				// Иконка VK
+				container.Add(new CuiLabel
+				{
+					RectTransform = { AnchorMin = "0.01 0.1", AnchorMax = "0.08 0.9" },
+					Text = { Text = "VK", Font = "robotocondensed-bold.ttf", FontSize = 20, Align = TextAnchor.MiddleCenter, Color = "0.3 0.6 0.9 1" }
+				}, $"{Layer}_vkprofile");
+
+				container.Add(new CuiLabel
+				{
+					RectTransform = { AnchorMin = "0.09 0.1", AnchorMax = "0.5 0.9" },
+					Text = { Text = $"VK ID: {data.VkId}", Font = "robotocondensed-regular.ttf", FontSize = 13, Align = TextAnchor.MiddleLeft, Color = "1 1 1 1" }
+				}, $"{Layer}_vkprofile");
+
+				container.Add(new CuiLabel
+				{
+					RectTransform = { AnchorMin = "0.5 0.1", AnchorMax = "0.85 0.9" },
+					Text = { Text = "✓ Уведомления в VK включены", Font = "robotocondensed-regular.ttf", FontSize = 12, Align = TextAnchor.MiddleLeft, Color = "0.4 0.8 0.4 1" }
+				}, $"{Layer}_vkprofile");
+
+				container.Add(new CuiButton
+				{
+					RectTransform = { AnchorMin = "0.87 0.15", AnchorMax = "0.99 0.85" },
+					Button = { Command = "tpnotifications.tab vklink", Color = "0.3 0.3 0.3 0.8" },
+					Text = { Text = "Настроить", Font = "robotocondensed-regular.ttf", FontSize = 10, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
+				}, $"{Layer}_vkprofile");
+			}
+
 			// Контент - История уведомлений
-			float yPos = 0.80f;
+			float yPos = data.VkConfirmed && !string.IsNullOrEmpty(data.VkId) ? 0.73f : 0.80f;
 			int count = 0;
 			foreach (var notification in data.History.Take(10))
 			{
@@ -1040,6 +1077,64 @@ namespace Oxide.Plugins
 
 			UnlinkVk(player);
 			OpenVkLinkUI(player);
+		}
+
+		[ConsoleCommand("tpnotifications.vk.setid")]
+		void CmdVkSetId(ConsoleSystem.Arg arg)
+		{
+			var player = arg.Player();
+			if (player == null) return;
+
+			string vkId = arg.GetString(0);
+			if (!string.IsNullOrEmpty(vkId))
+			{
+				_tempVkIds[player.userID] = vkId;
+			}
+		}
+
+		[ConsoleCommand("tpnotifications.vk.getcode")]
+		void CmdVkGetCode(ConsoleSystem.Arg arg)
+		{
+			var player = arg.Player();
+			if (player == null) return;
+
+			if (!_tempVkIds.ContainsKey(player.userID) || string.IsNullOrEmpty(_tempVkIds[player.userID]))
+			{
+				player.ChatMessage($"<color=#F44336>[Ошибка]</color> Введите VK ID в поле выше!");
+				return;
+			}
+
+			string vkId = _tempVkIds[player.userID];
+
+			// Проверяем, что введены только цифры
+			if (!vkId.All(char.IsDigit))
+			{
+				player.ChatMessage($"<color=#F44336>[Ошибка]</color> VK ID должен содержать только цифры!");
+				return;
+			}
+
+			StartVkVerification(player, vkId);
+			timer.Once(1f, () => OpenVkLinkUI(player));
+		}
+
+		[ConsoleCommand("tpnotifications.vk.confirm")]
+		void CmdVkConfirm(ConsoleSystem.Arg arg)
+		{
+			var player = arg.Player();
+			if (player == null) return;
+
+			string code = arg.GetString(0);
+
+			if (string.IsNullOrEmpty(code))
+			{
+				player.ChatMessage($"<color=#F44336>[Ошибка]</color> Введите код!");
+				return;
+			}
+
+			if (ConfirmVkVerification(player, code))
+			{
+				timer.Once(0.5f, () => OpenVkLinkUI(player));
+			}
 		}
 		#endregion
 	}
