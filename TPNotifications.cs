@@ -1143,6 +1143,16 @@ Text = { Text = "Где найти VK ID: vk.com/id123456789 (цифры пос�
 			OpenVkLinkUI(player);
 		}
 
+		[ConsoleCommand("tpnotifications.vk.unlink.confirm")]
+		void CmdVkUnlinkConfirm(ConsoleSystem.Arg arg)
+		{
+			var player = arg.Player();
+			if (player == null) return;
+
+			UnlinkVk(player);
+			OpenNotificationsUI(player);
+		}
+
 		[ConsoleCommand("tpnotifications.vk.setid")]
 		void CmdVkSetId(ConsoleSystem.Arg arg)
 		{
