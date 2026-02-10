@@ -896,51 +896,115 @@ namespace Oxide.Plugins
 
 				// Проверяем, есть ли ожидание подтверждения
 				if (_pendingVerifications.ContainsKey(player.userID))
-				{
-					var pending = _pendingVerifications[player.userID];
-					if (DateTime.Now <= pending.ExpiresAt)
-					{
-						// Показываем форму ввода кода
-						container.Add(new CuiLabel
-						{
-							RectTransform = { AnchorMin = "0.1 0.54", AnchorMax = "0.9 0.60" },
-							Text = { Text = $"Код отправлен в VK (ID: {pending.VkId})", Font = "robotocondensed-regular.ttf", FontSize = 12, Align = TextAnchor.MiddleCenter, Color = "0.4 0.8 0.4 1" }
-						}, Layer);
+{
+var pending = _pendingVerifications[player.userID];
+if (DateTime.Now <= pending.ExpiresAt)
+{
+// Показываем форму ввода кода
+container.Add(new CuiLabel
+{
+RectTransform = { AnchorMin = "0.1 0.58", AnchorMax = "0.9 0.64" },
+Text = { Text = $"Код отправлен в VK (ID: {pending.VkId})", Font = "robotocondensed-regular.ttf", FontSize = 13, Align = TextAnchor.MiddleCenter, Color = "0.4 0.8 0.4 1" }
+}, Layer);
 
-						int secondsLeft = (int)(pending.ExpiresAt - DateTime.Now).TotalSeconds;
-						container.Add(new CuiLabel
-						{
-							RectTransform = { AnchorMin = "0.1 0.49", AnchorMax = "0.9 0.53" },
-							Text = { Text = $"Осталось времени: {secondsLeft} сек", Font = "robotocondensed-regular.ttf", FontSize = 11, Align = TextAnchor.MiddleCenter, Color = "1 0.8 0.2 1" }
-						}, Layer);
+int secondsLeft = (int)(pending.ExpiresAt - DateTime.Now).TotalSeconds;
+container.Add(new CuiLabel
+{
+RectTransform = { AnchorMin = "0.1 0.53", AnchorMax = "0.9 0.57" },
+Text = { Text = $"Осталось времени: {secondsLeft} сек", Font = "robotocondensed-regular.ttf", FontSize = 11, Align = TextAnchor.MiddleCenter, Color = "1 0.8 0.2 1" }
+}, Layer);
 
-						container.Add(new CuiLabel
-						{
-							RectTransform = { AnchorMin = "0.25 0.42", AnchorMax = "0.75 0.47" },
-							Text = { Text = "Введите код: /vkcode <код>", Font = "robotocondensed-regular.ttf", FontSize = 13, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
-						}, Layer);
-					}
-				}
-				else
-				{
-					// Форма для ввода VK ID
-					container.Add(new CuiLabel
-					{
-						RectTransform = { AnchorMin = "0.1 0.54", AnchorMax = "0.9 0.58" },
-						Text = { Text = "Введите команду в чат:", Font = "robotocondensed-regular.ttf", FontSize = 12, Align = TextAnchor.MiddleCenter, Color = "0.8 0.8 0.8 1" }
-					}, Layer);
+container.Add(new CuiLabel
+{
+RectTransform = { AnchorMin = "0.2 0.48", AnchorMax = "0.8 0.52" },
+Text = { Text = "Введите код из VK:", Font = "robotocondensed-regular.ttf", FontSize = 12, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
+}, Layer);
 
-					container.Add(new CuiLabel
-					{
-						RectTransform = { AnchorMin = "0.25 0.48", AnchorMax = "0.75 0.53" },
-						Text = { Text = "/vklink <ваш VK ID>", Font = "robotocondensed-bold.ttf", FontSize = 14, Align = TextAnchor.MiddleCenter, Color = "0.4 0.8 1 1" }
-					}, Layer);
+// Панель для поля ввода
+container.Add(new CuiPanel
+{
+RectTransform = { AnchorMin = "0.35 0.40", AnchorMax = "0.65 0.46" },
+Image = { Color = "0.2 0.2 0.2 0.9" }
+}, Layer, $"{Layer}_codeinputpanel");
 
-					container.Add(new CuiLabel
-					{
-						RectTransform = { AnchorMin = "0.1 0.40", AnchorMax = "0.9 0.45" },
-						Text = { Text = "Где найти VK ID: vk.com/id123456789 (цифры после id)", Font = "robotocondensed-regular.ttf", FontSize = 11, Align = TextAnchor.MiddleCenter, Color = "0.6 0.6 0.6 1" }
-					}, Layer);
+// Поле ввода кода
+container.Add(new CuiElement
+{
+Parent = $"{Layer}_codeinputpanel",
+Components =
+{
+new CuiInputFieldComponent
+{
+Align = TextAnchor.MiddleCenter,
+CharsLimit = 6,
+FontSize = 16,
+Font = "robotocondensed-bold.ttf",
+Color = "1 1 1 1",
+Command = "tpnotifications.vk.confirm ",
+NeedsKeyboard = true
+},
+new CuiRectTransformComponent { AnchorMin = "0 0", AnchorMax = "1 1" }
+}
+});
+
+// Подсказка
+container.Add(new CuiLabel
+{
+RectTransform = { AnchorMin = "0.2 0.34", AnchorMax = "0.8 0.38" },
+Text = { Text = "Нажмите ENTER после ввода кода", Font = "robotocondensed-regular.ttf", FontSize = 10, Align = TextAnchor.MiddleCenter, Color = "0.7 0.7 0.7 1" }
+}, Layer);
+}
+}
+else
+{
+// Форма для ввода VK ID
+container.Add(new CuiLabel
+{
+RectTransform = { AnchorMin = "0.1 0.57", AnchorMax = "0.9 0.61" },
+Text = { Text = "Введите ваш VK ID:", Font = "robotocondensed-regular.ttf", FontSize = 12, Align = TextAnchor.MiddleCenter, Color = "0.8 0.8 0.8 1" }
+}, Layer);
+
+// Панель для поля ввода VK ID
+container.Add(new CuiPanel
+{
+RectTransform = { AnchorMin = "0.30 0.49", AnchorMax = "0.70 0.55" },
+Image = { Color = "0.2 0.2 0.2 0.9" }
+}, Layer, $"{Layer}_vkidinputpanel");
+
+// Поле ввода VK ID
+container.Add(new CuiElement
+{
+Parent = $"{Layer}_vkidinputpanel",
+Components =
+{
+new CuiInputFieldComponent
+{
+Align = TextAnchor.MiddleCenter,
+CharsLimit = 15,
+FontSize = 14,
+Font = "robotocondensed-regular.ttf",
+Color = "1 1 1 1",
+Command = "tpnotifications.vk.setid ",
+NeedsKeyboard = true
+},
+new CuiRectTransformComponent { AnchorMin = "0 0", AnchorMax = "1 1" }
+}
+});
+
+// Кнопка "Получить код"
+container.Add(new CuiButton
+{
+RectTransform = { AnchorMin = "0.35 0.40", AnchorMax = "0.65 0.47" },
+Button = { Command = $"tpnotifications.vk.getcode", Color = "0.2 0.6 0.3 0.8" },
+Text = { Text = "Получить код", Font = "robotocondensed-bold.ttf", FontSize = 14, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
+}, Layer);
+
+container.Add(new CuiLabel
+{
+RectTransform = { AnchorMin = "0.1 0.33", AnchorMax = "0.9 0.38" },
+Text = { Text = "Где найти VK ID: vk.com/id123456789 (цифры после id)", Font = "robotocondensed-regular.ttf", FontSize = 10, Align = TextAnchor.MiddleCenter, Color = "0.6 0.6 0.6 1" }
+}, Layer);
+}
 				}
 			}
 
