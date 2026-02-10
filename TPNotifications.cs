@@ -20,6 +20,7 @@ namespace Oxide.Plugins
 		private const string Layer = "TPNotifications_UI";
 		private Dictionary<ulong, PlayerData> _playerData = new Dictionary<ulong, PlayerData>();
 		private List<SentNotification> _sentNotifications = new List<SentNotification>();
+		private Dictionary<ulong, PendingVerification> _pendingVerifications = new Dictionary<ulong, PendingVerification>();
 		#endregion
 
 		#region Data Classes
@@ -27,6 +28,12 @@ namespace Oxide.Plugins
 		{
 			[JsonProperty("Ник игрока")]
 			public string DisplayName { get; set; }
+			
+			[JsonProperty("VK ID")]
+			public string VkId { get; set; } = "";
+			
+			[JsonProperty("VK Подтвержден")]
+			public bool VkConfirmed { get; set; } = false;
 			
 			[JsonProperty("История уведомлений")]
 			public List<NotificationHistory> History { get; set; } = new List<NotificationHistory>();
@@ -66,6 +73,13 @@ namespace Oxide.Plugins
 			
 			[JsonProperty("Вайп")]
 			public bool Wipe { get; set; } = true;
+		}
+
+		public class PendingVerification
+		{
+			public string VkId { get; set; }
+			public string Code { get; set; }
+			public DateTime ExpiresAt { get; set; }
 		}
 
 		public class SentNotification
@@ -366,6 +380,86 @@ namespace Oxide.Plugins
 				}
 			}, this);
 		}
+
+		string GenerateVerificationCode()
+		{
+			return UnityEngine.Random.Range(100000, 999999).ToString();
+		}
+
+		void StartVkVerification(BasePlayer player, string vkId)
+		{
+			var data = GetPlayerData(player.userID);
+			if (data == null) return;
+
+			// Генерируем код
+			string code = GenerateVerificationCode();
+			
+			// Сохраняем ожидание подтверждения (код действует 10 минут)
+			_pendingVerifications[player.userID] = new PendingVerification
+			{
+				VkId = vkId,
+				Code = code,
+				ExpiresAt = DateTime.Now.AddMinutes(10)
+			};
+
+			// Отправляем код в VK
+			string message = $"Ваш код подтверждения для сервера: {code}\nКод действителен 10 минут.";
+			SendVKNotification(vkId, message);
+
+			// Уведомляем игрока
+			player.ChatMessage($"<color=#4CAF50>[Уведомления]</color> Код подтверждения отправлен в VK. Введите его в окне подтверждения.");
+		}
+
+		bool ConfirmVkVerification(BasePlayer player, string code)
+		{
+			if (!_pendingVerifications.ContainsKey(player.userID))
+			{
+				player.ChatMessage($"<color=#F44336>[Ошибка]</color> Нет активного запроса на привязку VK.");
+				return false;
+			}
+
+			var pending = _pendingVerifications[player.userID];
+
+			// Проверяем срок действия
+			if (DateTime.Now > pending.ExpiresAt)
+			{
+				_pendingVerifications.Remove(player.userID);
+				player.ChatMessage($"<color=#F44336>[Ошибка]</color> Код подтверждения истек. Попробуйте снова.");
+				return false;
+			}
+
+			// Проверяем код
+			if (pending.Code != code)
+			{
+				player.ChatMessage($"<color=#F44336>[Ошибка]</color> Неверный код подтверждения.");
+				return false;
+			}
+
+			// Подтверждаем привязку
+			var data = GetPlayerData(player.userID);
+			if (data != null)
+			{
+				data.VkId = pending.VkId;
+				data.VkConfirmed = true;
+				SaveData();
+			}
+
+			_pendingVerifications.Remove(player.userID);
+			player.ChatMessage($"<color=#4CAF50>[Успех]</color> VK успешно привязан!");
+			return true;
+		}
+
+		void UnlinkVk(BasePlayer player)
+		{
+			var data = GetPlayerData(player.userID);
+			if (data != null)
+			{
+				data.VkId = "";
+				data.VkConfirmed = false;
+				SaveData();
+				player.ChatMessage($"<color=#FFC107>[Уведомления]</color> VK отвязан от вашего аккаунта.");
+			}
+		}
 		#endregion
 
 		#region API Methods
@@ -381,8 +475,11 @@ namespace Oxide.Plugins
 			
 			AddNotificationToHistory(player.userID, "Рейд", message);
 			
-			// Можно добавить отправку в VK, если у игрока привязан VK ID
-			// SendVKNotification(vkUserId, message);
+			// Отправляем в VK если привязан
+			if (data != null && data.VkConfirmed && !string.IsNullOrEmpty(data.VkId))
+			{
+				SendVKNotification(data.VkId, message);
+			}
 		}
 
 		void SendKillNotification(BasePlayer player, string killerName)
@@ -395,6 +492,12 @@ namespace Oxide.Plugins
 			string message = $"{_config.Settings.NotificationPrefix} Тебя убил {killerName}!";
 			
 			AddNotificationToHistory(player.userID, "Убийство", message);
+			
+			// Отправляем в VK если привязан
+			if (data != null && data.VkConfirmed && !string.IsNullOrEmpty(data.VkId))
+			{
+				SendVKNotification(data.VkId, message);
+			}
 		}
 
 		void SendRewardNotification(BasePlayer player, string rewardName)
@@ -407,6 +510,12 @@ namespace Oxide.Plugins
 			string message = $"{_config.Settings.NotificationPrefix} Ты получил награду: {rewardName}!";
 			
 			AddNotificationToHistory(player.userID, "Награда", message);
+			
+			// Отправляем в VK если привязан
+			if (data != null && data.VkConfirmed && !string.IsNullOrEmpty(data.VkId))
+			{
+				SendVKNotification(data.VkId, message);
+			}
 		}
 
 		void SendAdminMessage(string message)
@@ -507,6 +616,13 @@ namespace Oxide.Plugins
 				RectTransform = { AnchorMin = "0.25 0.85", AnchorMax = "0.46 0.90" },
 				Button = { Command = "tpnotifications.tab settings", Color = "0.2 0.2 0.2 0.8" },
 				Text = { Text = "Настройки", Font = "robotocondensed-regular.ttf", FontSize = 14, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
+			}, Layer);
+
+			container.Add(new CuiButton
+			{
+				RectTransform = { AnchorMin = "0.48 0.85", AnchorMax = "0.69 0.90" },
+				Button = { Command = "tpnotifications.tab vklink", Color = "0.2 0.2 0.2 0.8" },
+				Text = { Text = "Привязка VK", Font = "robotocondensed-regular.ttf", FontSize = 14, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
 			}, Layer);
 
 			// Контент - История уведомлений
@@ -650,6 +766,150 @@ namespace Oxide.Plugins
 			CuiHelper.AddUi(player, container);
 		}
 
+		void OpenVkLinkUI(BasePlayer player)
+		{
+			DestroyUI(player);
+
+			var data = GetPlayerData(player.userID);
+			if (data == null) return;
+
+			CuiElementContainer container = new CuiElementContainer();
+
+			// Главная панель
+			container.Add(new CuiPanel
+			{
+				RectTransform = { AnchorMin = "0.15 0.15", AnchorMax = "0.85 0.85" },
+				Image = { Color = "0.1 0.1 0.1 0.95" }
+			}, "Overlay", Layer);
+
+			// Заголовок
+			container.Add(new CuiLabel
+			{
+				RectTransform = { AnchorMin = "0 0.92", AnchorMax = "1 1" },
+				Text = { Text = "ПРИВЯЗКА VK", Font = "robotocondensed-bold.ttf", FontSize = 24, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
+			}, Layer);
+
+			// Кнопка закрытия
+			container.Add(new CuiButton
+			{
+				RectTransform = { AnchorMin = "0.92 0.92", AnchorMax = "0.99 0.99" },
+				Button = { Command = "tpnotifications.close", Color = "0.8 0.2 0.2 0.8" },
+				Text = { Text = "X", Font = "robotocondensed-bold.ttf", FontSize = 20, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
+			}, Layer);
+
+			// Вкладки
+			container.Add(new CuiButton
+			{
+				RectTransform = { AnchorMin = "0.02 0.85", AnchorMax = "0.23 0.90" },
+				Button = { Command = "tpnotifications.tab history", Color = "0.2 0.2 0.2 0.8" },
+				Text = { Text = "История", Font = "robotocondensed-regular.ttf", FontSize = 14, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
+			}, Layer);
+
+			container.Add(new CuiButton
+			{
+				RectTransform = { AnchorMin = "0.25 0.85", AnchorMax = "0.46 0.90" },
+				Button = { Command = "tpnotifications.tab settings", Color = "0.2 0.2 0.2 0.8" },
+				Text = { Text = "Настройки", Font = "robotocondensed-regular.ttf", FontSize = 14, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
+			}, Layer);
+
+			container.Add(new CuiButton
+			{
+				RectTransform = { AnchorMin = "0.48 0.85", AnchorMax = "0.69 0.90" },
+				Button = { Command = "tpnotifications.tab vklink", Color = "0.3 0.3 0.3 0.8" },
+				Text = { Text = "Привязка VK", Font = "robotocondensed-regular.ttf", FontSize = 14, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
+			}, Layer);
+
+			// Контент
+			if (data.VkConfirmed && !string.IsNullOrEmpty(data.VkId))
+			{
+				// VK уже привязан
+				container.Add(new CuiLabel
+				{
+					RectTransform = { AnchorMin = "0.1 0.65", AnchorMax = "0.9 0.75" },
+					Text = { Text = $"VK ID: {data.VkId}", Font = "robotocondensed-regular.ttf", FontSize = 16, Align = TextAnchor.MiddleCenter, Color = "0.4 0.8 0.4 1" }
+				}, Layer);
+
+				container.Add(new CuiLabel
+				{
+					RectTransform = { AnchorMin = "0.1 0.58", AnchorMax = "0.9 0.63" },
+					Text = { Text = "✓ VK успешно привязан", Font = "robotocondensed-bold.ttf", FontSize = 14, Align = TextAnchor.MiddleCenter, Color = "0.4 0.8 0.4 1" }
+				}, Layer);
+
+				container.Add(new CuiButton
+				{
+					RectTransform = { AnchorMin = "0.35 0.45", AnchorMax = "0.65 0.52" },
+					Button = { Command = "tpnotifications.vk.unlink", Color = "0.8 0.3 0.3 0.8" },
+					Text = { Text = "Отвязать VK", Font = "robotocondensed-bold.ttf", FontSize = 14, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
+				}, Layer);
+			}
+			else
+			{
+				// VK не привязан
+				container.Add(new CuiLabel
+				{
+					RectTransform = { AnchorMin = "0.1 0.7", AnchorMax = "0.9 0.78" },
+					Text = { Text = "Привязка VK аккаунта", Font = "robotocondensed-bold.ttf", FontSize = 18, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
+				}, Layer);
+
+				container.Add(new CuiLabel
+				{
+					RectTransform = { AnchorMin = "0.1 0.62", AnchorMax = "0.9 0.68" },
+					Text = { Text = "Привяжите VK для получения уведомлений в личные сообщения", Font = "robotocondensed-regular.ttf", FontSize = 12, Align = TextAnchor.MiddleCenter, Color = "0.8 0.8 0.8 1" }
+				}, Layer);
+
+				// Проверяем, есть ли ожидание подтверждения
+				if (_pendingVerifications.ContainsKey(player.userID))
+				{
+					var pending = _pendingVerifications[player.userID];
+					if (DateTime.Now <= pending.ExpiresAt)
+					{
+						// Показываем форму ввода кода
+						container.Add(new CuiLabel
+						{
+							RectTransform = { AnchorMin = "0.1 0.54", AnchorMax = "0.9 0.60" },
+							Text = { Text = $"Код отправлен в VK (ID: {pending.VkId})", Font = "robotocondensed-regular.ttf", FontSize = 12, Align = TextAnchor.MiddleCenter, Color = "0.4 0.8 0.4 1" }
+						}, Layer);
+
+						int secondsLeft = (int)(pending.ExpiresAt - DateTime.Now).TotalSeconds;
+						container.Add(new CuiLabel
+						{
+							RectTransform = { AnchorMin = "0.1 0.49", AnchorMax = "0.9 0.53" },
+							Text = { Text = $"Осталось времени: {secondsLeft} сек", Font = "robotocondensed-regular.ttf", FontSize = 11, Align = TextAnchor.MiddleCenter, Color = "1 0.8 0.2 1" }
+						}, Layer);
+
+						container.Add(new CuiLabel
+						{
+							RectTransform = { AnchorMin = "0.25 0.42", AnchorMax = "0.75 0.47" },
+							Text = { Text = "Введите код: /vkcode <код>", Font = "robotocondensed-regular.ttf", FontSize = 13, Align = TextAnchor.MiddleCenter, Color = "1 1 1 1" }
+						}, Layer);
+					}
+				}
+				else
+				{
+					// Форма для ввода VK ID
+					container.Add(new CuiLabel
+					{
+						RectTransform = { AnchorMin = "0.1 0.54", AnchorMax = "0.9 0.58" },
+						Text = { Text = "Введите команду в чат:", Font = "robotocondensed-regular.ttf", FontSize = 12, Align = TextAnchor.MiddleCenter, Color = "0.8 0.8 0.8 1" }
+					}, Layer);
+
+					container.Add(new CuiLabel
+					{
+						RectTransform = { AnchorMin = "0.25 0.48", AnchorMax = "0.75 0.53" },
+						Text = { Text = "/vklink <ваш VK ID>", Font = "robotocondensed-bold.ttf", FontSize = 14, Align = TextAnchor.MiddleCenter, Color = "0.4 0.8 1 1" }
+					}, Layer);
+
+					container.Add(new CuiLabel
+					{
+						RectTransform = { AnchorMin = "0.1 0.40", AnchorMax = "0.9 0.45" },
+						Text = { Text = "Где найти VK ID: vk.com/id123456789 (цифры после id)", Font = "robotocondensed-regular.ttf", FontSize = 11, Align = TextAnchor.MiddleCenter, Color = "0.6 0.6 0.6 1" }
+					}, Layer);
+				}
+			}
+
+			CuiHelper.AddUi(player, container);
+		}
+
 		void DestroyUI(BasePlayer player)
 		{
 			CuiHelper.DestroyUi(player, Layer);
@@ -677,6 +937,10 @@ namespace Oxide.Plugins
 			else if (tab == "settings")
 			{
 				OpenSettingsUI(player);
+			}
+			else if (tab == "vklink")
+			{
+				OpenVkLinkUI(player);
 			}
 		}
 
@@ -726,6 +990,56 @@ namespace Oxide.Plugins
 		void CmdNotify(BasePlayer player, string command, string[] args)
 		{
 			OpenNotificationsUI(player);
+		}
+
+		[ChatCommand("vklink")]
+		void CmdVkLink(BasePlayer player, string command, string[] args)
+		{
+			if (args.Length == 0)
+			{
+				player.ChatMessage($"<color=#F44336>[Ошибка]</color> Используйте: /vklink <VK ID>");
+				player.ChatMessage($"<color=#FFC107>[Подсказка]</color> Найдите ваш VK ID: vk.com/id123456789 (цифры после id)");
+				return;
+			}
+
+			string vkId = args[0];
+			
+			// Проверяем, что введены только цифры
+			if (!vkId.All(char.IsDigit))
+			{
+				player.ChatMessage($"<color=#F44336>[Ошибка]</color> VK ID должен содержать только цифры!");
+				return;
+			}
+
+			StartVkVerification(player, vkId);
+		}
+
+		[ChatCommand("vkcode")]
+		void CmdVkCode(BasePlayer player, string command, string[] args)
+		{
+			if (args.Length == 0)
+			{
+				player.ChatMessage($"<color=#F44336>[Ошибка]</color> Используйте: /vkcode <код>");
+				return;
+			}
+
+			string code = args[0];
+			
+			if (ConfirmVkVerification(player, code))
+			{
+				// Обновляем UI если открыт
+				OpenVkLinkUI(player);
+			}
+		}
+
+		[ConsoleCommand("tpnotifications.vk.unlink")]
+		void CmdVkUnlink(ConsoleSystem.Arg arg)
+		{
+			var player = arg.Player();
+			if (player == null) return;
+
+			UnlinkVk(player);
+			OpenVkLinkUI(player);
 		}
 		#endregion
 	}
