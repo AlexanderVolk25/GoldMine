@@ -599,19 +599,19 @@ namespace Oxide.Plugins
                                   new ControllerParameters.AdvancedFuncion
                                   {
                                       Argument = LanguageEn ? "<color=#CC99FF>[PLAYER]</color>" : "<color=#CC99FF>[ИГРОК]</color>",
-                                      Permissions = "iqchat.default",
+                                      Permissions = "tpchat.default",
                                       IsBlockSelected = false,
                                   },
                                   new ControllerParameters.AdvancedFuncion
                                   {
                                       Argument = "<color=#ffff99>[VIP]</color>",
-                                      Permissions = "iqchat.admin",
+                                      Permissions = "tpchat.admin",
                                       IsBlockSelected = false,
                                   },
                                   new ControllerParameters.AdvancedFuncion
                                   {
                                       Argument = LanguageEn ? "<color=#ff9999>[ADMIN]</color>" : "<color=#ff9999>[АДМИН]</color>",
-                                      Permissions = "iqchat.admin",
+                                      Permissions = "tpchat.admin",
                                       IsBlockSelected = false,
                                   },
                             },
@@ -621,19 +621,19 @@ namespace Oxide.Plugins
                                new ControllerParameters.AdvancedFuncion
                                {
                                     Argument = "#CC99FF",
-                                    Permissions = "iqchat.default",
+                                    Permissions = "tpchat.default",
                                     IsBlockSelected = false,
                                },
                                new ControllerParameters.AdvancedFuncion
                                {
                                     Argument = "#ffff99",
-                                    Permissions = "iqchat.admin",
+                                    Permissions = "tpchat.admin",
                                     IsBlockSelected = false,
                                },
                                new ControllerParameters.AdvancedFuncion
                                {
                                     Argument = "#ff9999",
-                                    Permissions = "iqchat.admin",
+                                    Permissions = "tpchat.admin",
                                     IsBlockSelected = false,
                                },
                         },
@@ -642,19 +642,19 @@ namespace Oxide.Plugins
                                new ControllerParameters.AdvancedFuncion
                                {
                                     Argument = "#CC99FF",
-                                    Permissions = "iqchat.default",
+                                    Permissions = "tpchat.default",
                                     IsBlockSelected = false,
                                },
                                new ControllerParameters.AdvancedFuncion
                                {
                                     Argument = "#ffff99",
-                                    Permissions = "iqchat.admin",
+                                    Permissions = "tpchat.admin",
                                     IsBlockSelected = false,
                                },
                                new ControllerParameters.AdvancedFuncion
                                {
                                     Argument = "#ff9999",
-                                    Permissions = "iqchat.admin",
+                                    Permissions = "tpchat.admin",
                                     IsBlockSelected = false,
                                },
                         },
@@ -829,11 +829,11 @@ namespace Oxide.Plugins
                                 SizeNick = 14,
                                 sizeMessagePrivilages = new Dictionary<String, Int32>()
                                 {
-                                    ["iqchat.bigBoy"] = 16,
+                                    ["tpchat.bigBoy"] = 16,
                                 },
                                 sizeNickPrivilages = new Dictionary<String, Int32>()
                                 {
-                                    ["iqchat.bigBoy"] = 16,
+                                    ["tpchat.bigBoy"] = 16,
                                 }
                             }
                         },
@@ -1284,7 +1284,7 @@ namespace Oxide.Plugins
            
             player.SendConsoleCommand("chat.add", Chat.ChatChannel.Global, AvatarID, $"{Prefix}<color={Hex}>{Message}</color>");
         }
-        private const String PermissionAntiSpam = "iqchat.antispamabuse";
+        private const String PermissionAntiSpam = "tpchat.antispamabuse";
         private Boolean HasMorePages<T>(IEnumerable<T> items, Int32 page) => items != null && items.Skip(18 * (page + 1)).Any();
         private String XLevel_GetPrefix(BasePlayer player)
         {
@@ -1637,7 +1637,7 @@ namespace Oxide.Plugins
             });
             PrintWarning(LanguageEn ? $"PRIVATE MESSAGES : {Sender.displayName}({Sender.userID}) -> {RetargetUser.displayName} : MESSAGE : {Message}" : $"ЛИЧНЫЕ СООБЩЕНИЯ : {Sender.displayName}({Sender.userID}) -> {RetargetUser.displayName} : СООБЩЕНИЕ : {Message}");
         }
-        private const String PermissionRename = "iqchat.renameuse";
+        private const String PermissionRename = "tpchat.renameuse";
         [ConsoleCommand("saybro")]
         private void AlertOnlyPlayerConsoleCommand(ConsoleSystem.Arg args)
         {
@@ -2077,7 +2077,7 @@ namespace Oxide.Plugins
             return Regex.Replace(input, "<.*?>", String.Empty);
         }
         List<String> IQRankListKey(ulong userID) => (List<string>)(IQRankSystem?.Call("API_RANK_USER_KEYS", userID));
-        private const String PermissionHideDisconnection = "iqchat.hidedisconnection";
+        private const String PermissionHideDisconnection = "tpchat.hidedisconnection";
 
         public Dictionary<UInt64, FlooderInfo> Flooders = new Dictionary<UInt64, FlooderInfo>();
         
@@ -2949,9 +2949,9 @@ namespace Oxide.Plugins
         
         void OnUserPermissionGranted(string id, string permName) => SetupParametres(id, permName);
 
-        private const String PermissionHideOnline = "iqchat.onlinehide";
-        private const String PermissionHideConnection = "iqchat.hideconnection";
-        private const String PermissionMute = "iqchat.muteuse";
+        private const String PermissionHideOnline = "tpchat.onlinehide";
+        private const String PermissionHideConnection = "tpchat.hideconnection";
+        private const String PermissionMute = "tpchat.muteuse";
         private void DrawUI_TPChat_Mute_And_Ignore_Player(BasePlayer player, SelectedAction Action, IEnumerable<BasePlayer> PlayerList, IEnumerable<FakePlayer> FakePlayerList = null)
         {
             User MyInfo = UserInformation[player.userID];
@@ -3316,7 +3316,7 @@ namespace Oxide.Plugins
             if (!permission.UserHasPermission(Sender.UserIDString, PermissionAlert)) return;
             Alert(Sender, args, true);
         }
-        private const String PermissionMutedAdmin = "iqchat.adminmuted";
+        private const String PermissionMutedAdmin = "tpchat.adminmuted";
         String API_GET_DEFAULT_MESSAGE_COLOR() => config.ControllerConnect.SetupDefaults.MessageDefault;
 
         
@@ -3664,7 +3664,7 @@ namespace Oxide.Plugins
             Mute,
             Ignore
         }
-        private const String PermissionAlert = "iqchat.alertuse";
+        private const String PermissionAlert = "tpchat.alertuse";
         
         private void AlertController(BasePlayer player)
         {
@@ -4295,7 +4295,7 @@ namespace Oxide.Plugins
                 ["TPCHAT_CONTEXT_IGNORED_STATUS_COUNT"] = "<size=11>{0}</size> human (а)", ///"%IGNORED_STATUS_COUNT%"
                 ["TPCHAT_CONTEXT_IGNORED_STATUS_TITLE"] = "Ignoring", ///"%IGNORED_STATUS_TITLE%"
                 ["TPCHAT_CONTEXT_NICK_DISPLAY_TITLE"] = "Your nickname", ///"%NICK_DISPLAY_TITLE%"
-                ["TPCHAT_CONTEXT_NICK_DISPLAY_MESSAGE"] = "i love iqchat",
+                ["TPCHAT_CONTEXT_NICK_DISPLAY_MESSAGE"] = "i love tpchat",
                 ["TPCHAT_CONTEXT_SLIDER_PREFIX_TITLE"] = "Prefix", /// %SLIDER_PREFIX_TITLE%
                 ["TPCHAT_CONTEXT_SLIDER_NICK_COLOR_TITLE"] = "Nick", /// %SLIDER_NICK_COLOR_TITLE%
                 ["TPCHAT_CONTEXT_SLIDER_MESSAGE_COLOR_TITLE"] = "Message", /// %SLIDER_MESSAGE_COLOR_TITLE%

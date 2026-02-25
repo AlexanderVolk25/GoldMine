@@ -18,7 +18,7 @@ namespace Oxide.Plugins
 		[PluginReference] private Plugin ImageLibrary, Duel, ArenaTournament, TPMenuSystem;
 		private static TPWipeBlock _;
 		private static ConfigData config;
-		private string CONF_IgnorePermission = "block.ignore";
+		private string CONF_IgnorePermission = "tpwipeblock.block.ignore";
 		private class ConfigData
 		{
 			[JsonProperty(PropertyName = "Блокировка предметов")]
